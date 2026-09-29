@@ -2,9 +2,11 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
 android {
     namespace = "com.omer.kripto"
     compileSdk = 35
+
     defaultConfig {
         applicationId = "com.omer.kripto"
         minSdk = 24
@@ -12,7 +14,19 @@ android {
         versionCode = 46
         versionName = "46.0.0"
     }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
