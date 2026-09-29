@@ -1,0 +1,15 @@
+{
+  "version": "47.0",
+  "html_sha256": "3c92e52edc1f164c56d1c9bb6807339838b0abca9caceea2128203cc44f9386a",
+  "android_asset_sha256": "3c92e52edc1f164c56d1c9bb6807339838b0abca9caceea2128203cc44f9386a",
+  "android_asset_matches": true,
+  "script_count": 13,
+  "syntax_errors": [],
+  "dom_id_count": 121,
+  "duplicate_dom_ids": {},
+  "dynamic_code_execution": false,
+  "background_only_count": 4,
+  "native_market_route": true,
+  "native_web_search_fallback": true,
+  "merged_action_hub": true
+}

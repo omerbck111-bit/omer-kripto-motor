@@ -1,0 +1,9 @@
+<resources>
+<style name="Theme.OmerKripto" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <item name="android:fontFamily">sans</item>
+    <item name="android:colorAccent">#2F8FE0</item>
+    <item name="android:navigationBarColor">#070B12</item>
+    <item name="android:statusBarColor">#070B12</item>
+    <item name="android:windowLightStatusBar">false</item>
+</style>
+</resources>

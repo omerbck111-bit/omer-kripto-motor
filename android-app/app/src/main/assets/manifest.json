@@ -1,0 +1,20 @@
+{
+  "name": "Ömer Kripto Motoru",
+  "short_name": "Ömer Kripto",
+  "description": "Kripto piyasası tarama, Grid/Bot, Spot Al-Sat, tahmin hafızası, portföy ve analitik motoru.",
+  "start_url": "./OMER_KRIPTO_MOTORU.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
