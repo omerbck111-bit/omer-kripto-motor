@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <application android:theme="@style/Theme.OmerKripto" android:label="Ömer Kripto Motoru" android:usesCleartextTraffic="false" android:hardwareAccelerated="true" android:networkSecurityConfig="@xml/network_security_config" android:allowBackup="true">
+    <application android:theme="@style/Theme.OmerKripto" android:icon="@drawable/ic_launcher" android:roundIcon="@drawable/ic_launcher" android:label="Ömer Kripto Motoru" android:usesCleartextTraffic="false" android:hardwareAccelerated="true" android:networkSecurityConfig="@xml/network_security_config" android:allowBackup="true">
         <receiver android:name=".ModelDownloadReceiver" android:exported="false" />
         <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
             <intent-filter>
