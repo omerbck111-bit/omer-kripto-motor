@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         webView.webChromeClient = WebChromeClient()
-        webView.setBackgroundColor(0xFF070D16)
+        webView.setBackgroundColor(0xFF070D16.toInt())
         webView.isVerticalScrollBarEnabled = false
         webView.overScrollMode = WebView.OVER_SCROLL_NEVER
         webView.isHorizontalScrollBarEnabled = false
