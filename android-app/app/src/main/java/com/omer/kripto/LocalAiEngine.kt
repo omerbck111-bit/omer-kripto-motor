@@ -8,6 +8,9 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** Real on-device GGUF inference boundary backed by a prebuilt llama.cpp Android AAR. */
 class LocalAiEngine(private val context: Context) {
@@ -29,6 +32,12 @@ class LocalAiEngine(private val context: Context) {
 
     private val modelDir = File(context.filesDir, "models").apply { mkdirs() }
     private val inferenceLock = Any()
+    private val inferenceExecutor: ExecutorService = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "OmerAI-Inference").apply { isDaemon = true }
+    }
+    private var cachedModel: LlamaModel? = null
+    private var cachedModelPath: String? = null
+    private var cachedModelAt = 0L
     private var runtimeError: String? = null
 
     fun modelDir(): File = modelDir
@@ -94,16 +103,34 @@ class LocalAiEngine(private val context: Context) {
         )
     }
 
-    private fun loadAndComplete(modelFile: File, prompt: String, systemPrompt: String, maxTokens: Int): String {
-        val threads = (Runtime.getRuntime().availableProcessors() - 1).coerceIn(2, 6)
-        val config = LlamaConfig(contextSize = 4096, threads = threads, gpuLayers = 0)
-        val model: LlamaModel = runBlocking { Llama.loadModel(modelFile.absolutePath, config) }
-        return try {
-            runBlocking {
-                Llama.complete(model, prompt, systemPrompt, maxTokens.coerceIn(16, 4096)).text
+    private fun loadCachedModel(modelFile: File): LlamaModel {
+        synchronized(inferenceLock) {
+            val now = System.currentTimeMillis()
+            val current = cachedModel
+            if (current != null && cachedModelPath == modelFile.absolutePath && now - cachedModelAt < 10 * 60_000L) {
+                cachedModelAt = now
+                return current
             }
-        } finally {
-            Llama.releaseModel(model)
+            if (current != null) {
+                runCatching { Llama.releaseModel(current) }
+                cachedModel = null
+                cachedModelPath = null
+            }
+            // Conservative CPU settings reduce heat while keeping the local model usable.
+            val threads = (Runtime.getRuntime().availableProcessors() - 2).coerceIn(2, 4)
+            val config = LlamaConfig(contextSize = 2048, threads = threads, gpuLayers = 0)
+            val loaded = runBlocking { Llama.loadModel(modelFile.absolutePath, config) }
+            cachedModel = loaded
+            cachedModelPath = modelFile.absolutePath
+            cachedModelAt = now
+            return loaded
+        }
+    }
+
+    private fun loadAndComplete(modelFile: File, prompt: String, systemPrompt: String, maxTokens: Int): String {
+        val model = loadCachedModel(modelFile)
+        return runBlocking {
+            Llama.complete(model, prompt, systemPrompt, maxTokens.coerceIn(16, 1024)).text
         }
     }
 
@@ -122,6 +149,23 @@ class LocalAiEngine(private val context: Context) {
                 runtimeError = t.javaClass.simpleName + ": " + (t.message ?: "native inference hatası")
                 "LOCAL_AI_INFERENCE_ERROR"
             }
+        }
+    }
+
+    fun generateAsync(prompt: String, maxTokens: Int = 512, callback: (String) -> Unit) {
+        inferenceExecutor.execute {
+            val result = generate(prompt, maxTokens)
+            callback(result)
+        }
+    }
+
+    fun close() {
+        inferenceExecutor.shutdown()
+        runCatching { inferenceExecutor.awaitTermination(3, TimeUnit.SECONDS) }
+        synchronized(inferenceLock) {
+            cachedModel?.let { runCatching { Llama.releaseModel(it) } }
+            cachedModel = null
+            cachedModelPath = null
         }
     }
 

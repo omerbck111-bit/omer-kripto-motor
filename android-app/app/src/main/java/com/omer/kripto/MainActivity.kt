@@ -276,6 +276,76 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        fun generateAsync(prompt: String, maxTokens: Int, requestId: String): String {
+            val id = requestId.take(80)
+            localAi.generateAsync(prompt, maxTokens) { result ->
+                val jsId = JSONObject.quote(id)
+                val jsResult = JSONObject.quote(result)
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "window.__androidLocalAIResult && window.__androidLocalAIResult($jsId,$jsResult);", null
+                    )
+                }
+            }
+            return "STARTED:$id"
+        }
+
+        @JavascriptInterface
+        fun downloadStatus(): String {
+            return runCatching {
+                val prefs = getSharedPreferences("okm_ai", MODE_PRIVATE)
+                val id = prefs.getLong("model_download_id", -1L)
+                val file = getExternalFilesDir("models")?.let { File(it, LocalAiEngine.RECOMMENDED_MODEL) }
+                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                if (id <= 0L) {
+                    val s = localAi.status()
+                    return@runCatching JSONObject().apply {
+                        put("state", if (s.model && s.verified) "complete" else "idle")
+                        put("bytes", s.modelBytes)
+                        put("total", s.modelBytes)
+                        put("percent", if (s.model && s.verified) 100 else 0)
+                        put("verified", s.verified)
+                    }.toString()
+                }
+                val c = dm.query(DownloadManager.Query().setFilterById(id))
+                c.use {
+                    if (!it.moveToFirst()) {
+                        val s = localAi.status()
+                        return@runCatching JSONObject().apply {
+                            put("state", if (s.model && s.verified) "complete" else "idle")
+                            put("bytes", s.modelBytes)
+                            put("total", s.modelBytes)
+                            put("percent", if (s.model && s.verified) 100 else 0)
+                            put("verified", s.verified)
+                        }.toString()
+                    }
+                    val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    val downloaded = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                    val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                    val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                    val state = when (status) {
+                        DownloadManager.STATUS_PENDING -> "pending"
+                        DownloadManager.STATUS_RUNNING -> "running"
+                        DownloadManager.STATUS_PAUSED -> "paused"
+                        DownloadManager.STATUS_SUCCESSFUL -> "checking"
+                        DownloadManager.STATUS_FAILED -> "failed"
+                        else -> "idle"
+                    }
+                    val verified = status == DownloadManager.STATUS_SUCCESSFUL &&
+                        prefs.getBoolean("recommended_verified", false)
+                    JSONObject().apply {
+                        put("state", if (verified) "complete" else state)
+                        put("bytes", downloaded)
+                        put("total", total)
+                        put("percent", if (total > 0) (downloaded * 100 / total).toInt().coerceIn(0,100) else 0)
+                        put("reason", reason)
+                        put("verified", verified)
+                    }.toString()
+                }
+            }.getOrElse { JSONObject().put("state","error").put("error",it.message ?: "download_status_error").toString() }
+        }
+
+        @JavascriptInterface
         fun pickModel() {
             runOnUiThread { openModelPicker() }
         }
@@ -284,22 +354,40 @@ class MainActivity : AppCompatActivity() {
         fun downloadRecommendedModel(): String {
             return try {
                 val url = "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf?download=true"
+                val prefs = getSharedPreferences("okm_ai", MODE_PRIVATE)
+                val existing = localAi.findModel()
+                if (existing != null && existing.name.equals(LocalAiEngine.RECOMMENDED_MODEL, true) &&
+                    prefs.getBoolean("recommended_verified", false)) {
+                    return "READY:${existing.length()}"
+                }
+                val oldId = prefs.getLong("model_download_id", -1L)
+                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                if (oldId > 0L) {
+                    val q = dm.query(DownloadManager.Query().setFilterById(oldId))
+                    q.use {
+                        if (it.moveToFirst()) {
+                            val st = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                            if (st == DownloadManager.STATUS_RUNNING || st == DownloadManager.STATUS_PENDING || st == DownloadManager.STATUS_PAUSED) {
+                                return "EXISTING:$oldId"
+                            }
+                        }
+                    }
+                }
                 val dir = localAi.modelDir()
                 dir.mkdirs()
-                val file = File(dir, LocalAiEngine.RECOMMENDED_MODEL)
-                if (file.exists()) file.delete()
+                val target = File(dir, LocalAiEngine.RECOMMENDED_MODEL)
+                if (target.exists() && target.length() > 0L) target.delete()
                 getExternalFilesDir("models")?.let { File(it, LocalAiEngine.RECOMMENDED_MODEL).delete() }
                 val req = DownloadManager.Request(Uri.parse(url))
                     .setTitle("Ömer AI — Qwen3 4B Q4_K_M")
-                    .setDescription("Yerel AI modeli indiriliyor")
+                    .setDescription("Yerel AI modeli indiriliyor • ilerleme uygulamada gösterilecek")
                     .setMimeType("application/octet-stream")
                     .setAllowedOverMetered(true)
                     .setAllowedOverRoaming(false)
-                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     .setDestinationInExternalFilesDir(this@MainActivity, "models", LocalAiEngine.RECOMMENDED_MODEL)
-                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                 val id = dm.enqueue(req)
-                getSharedPreferences("okm_ai", MODE_PRIVATE).edit().putLong("model_download_id", id).apply()
+                prefs.edit().putLong("model_download_id", id).putBoolean("model_download_complete", false).apply()
                 "STARTED:$id"
             } catch (t: Throwable) {
                 "DOWNLOAD_ERROR:" + (t.message ?: "bilinmeyen hata")
