@@ -655,7 +655,7 @@ nav();
 const initialHash=location.hash.replace('#','');
 if(initialHash && document.getElementById(initialHash))show(initialHash);
 else {const first=document.querySelector('nav button[data-id="dashboard"]');if(first)first.classList.add('active');}
-try{state.exchangeComparison=JSON.parse(localStorage.okmExchangeComparison||'null')}catch{} checkFileProtocol();restoreLastMarketSnapshot();renderGridMemory();renderSpotMemory();renderOpportunityMemory();renderHistory();$('refreshSec').value=state.settings.refresh;$('capital').value=state.settings.capital;$('alertPct').value=state.settings.alert;$('maxPositionPct').value=state.settings.maxPositionPct||10;$('maxExposurePct').value=state.settings.maxExposurePct||35;$('maxDailyLossPct').value=state.settings.maxDailyLossPct||5;clock();setInterval(clock,1000);setInterval(()=>{if(!$('dashboard').classList.contains('hidden'))renderSummary();if(!$('spot').classList.contains('hidden'))buildSpot(false)},15000);(async()=>{await restoreUIState();state.pred=JSON.parse(localStorage.okmPred||'[]');state.settings=JSON.parse(localStorage.okmSet||JSON.stringify(state.settings));state.gridMem=JSON.parse(localStorage.okmGridMem||'[]');state.spotMem=JSON.parse(localStorage.okmSpotMem||'[]');state.paper=JSON.parse(localStorage.okmPaper||'[]');state.oppMem=JSON.parse(localStorage.okmOppMem||'[]');renderGridMemory();renderSpotMemory();renderOpportunityMemory();renderHistory();if(state.timer)clearInterval(state.timer);$('refreshSec').value=state.settings.refresh;$('capital').value=state.settings.capital;$('alertPct').value=state.settings.alert;$('maxPositionPct').value=state.settings.maxPositionPct||10;$('maxExposurePct').value=state.settings.maxExposurePct||35;$('maxDailyLossPct').value=state.settings.maxDailyLossPct||5;setTimeout(()=>refreshAll(),1200);syncAIContext();})();setTimeout(()=>historicalMemoryRecalc(false),location.hostname==='appassets.androidplatform.net'?12000:3500);setInterval(()=>historicalMemoryRecalc(false),10*60*1000);state.timer=setInterval(refreshAll,state.settings.refresh*1000);setInterval(syncAIContext,10000);
+try{state.exchangeComparison=JSON.parse(localStorage.okmExchangeComparison||'null')}catch{} checkFileProtocol();restoreLastMarketSnapshot();renderGridMemory();renderSpotMemory();renderOpportunityMemory();renderHistory();$('refreshSec').value=state.settings.refresh;$('capital').value=state.settings.capital;$('alertPct').value=state.settings.alert;$('maxPositionPct').value=state.settings.maxPositionPct||10;$('maxExposurePct').value=state.settings.maxExposurePct||35;$('maxDailyLossPct').value=state.settings.maxDailyLossPct||5;clock();setInterval(clock,1000);setInterval(()=>{if(!$('dashboard').classList.contains('hidden'))renderSummary();if(!$('spot').classList.contains('hidden'))buildSpot(false)},15000);(async()=>{await restoreUIState();state.pred=JSON.parse(localStorage.okmPred||'[]');state.settings=JSON.parse(localStorage.okmSet||JSON.stringify(state.settings));state.gridMem=JSON.parse(localStorage.okmGridMem||'[]');state.spotMem=JSON.parse(localStorage.okmSpotMem||'[]');state.paper=JSON.parse(localStorage.okmPaper||'[]');state.oppMem=JSON.parse(localStorage.okmOppMem||'[]');renderGridMemory();renderSpotMemory();renderOpportunityMemory();renderHistory();if(state.timer)clearInterval(state.timer);$('refreshSec').value=state.settings.refresh;$('capital').value=state.settings.capital;$('alertPct').value=state.settings.alert;$('maxPositionPct').value=state.settings.maxPositionPct||10;$('maxExposurePct').value=state.settings.maxExposurePct||35;$('maxDailyLossPct').value=state.settings.maxDailyLossPct||5;/* V52 SAFE BOOT: ilk açılışta otomatik piyasa taraması yok; UI önce hazır olur. */syncAIContext();})();setTimeout(()=>historicalMemoryRecalc(false),location.hostname==='appassets.androidplatform.net'?12000:3500);setInterval(()=>historicalMemoryRecalc(false),10*60*1000);state.timer=setInterval(refreshAll,state.settings.refresh*1000);setInterval(syncAIContext,10000);
   setInterval(()=>persistUIState(),10000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')persistUIState(true)});
   window.addEventListener('pagehide',()=>{persistUIState(true)});
@@ -1436,7 +1436,7 @@ function runSmartMarket(){
 }
 window.OKM_AI=OKM_AI;
 window.runSmartMarket=runSmartMarket;
-setTimeout(runSmartMarket,800);
+/* V52 SAFE BOOT: smart market kullanıcı/market refresh sonrasına bırakıldı. */
 setInterval(()=>{if(document.visibilityState==='visible')runSmartMarket()},60000);
 </script>
 <script>
@@ -1465,7 +1465,7 @@ setInterval(()=>{if(document.visibilityState==='visible')runSmartMarket()},60000
     SYS.last=result;localStorage.okmSystemIntegrity=JSON.stringify(result);return result;
   }
   SYS.scan=scan;window.OKM_SYSTEM_AUDIT=SYS;window.__okmSystemAudit=scan;
-  setTimeout(scan,1200);setInterval(()=>{if(document.visibilityState==='visible')scan()},60000);
+  /* V52 SAFE BOOT: sistem DOM audit otomatik başlatılmıyor. */
 })();
 /* ===== V30 LOCAL AI + SELF IMPROVEMENT LAYER ===== */
 (function(){
@@ -1554,8 +1554,8 @@ setInterval(()=>{if(document.visibilityState==='visible')runSmartMarket()},60000
   };
   // Eski web-servis tabanlı indirme yolunu native modele yönlendir.
   window.toggleWebPermission=window.toggleWebPermission||function(){};
-  window.__okmRunAIAudit();
-  window.refreshAIProviderStatus();
+  /* V52 SAFE BOOT: AI self-audit açılışta çalıştırılmıyor. */
+  /* V52 SAFE BOOT: AI provider status kullanıcı AI ekranına girince güncellenir. */
   setTimeout(()=>{updateV32Home();syncV32Mode()},800);
   // AI denetimi açılışta inference çalıştırmaz; yalnızca kullanıcı AI/sağlık ekranına girdiğinde veya manuel kontrolde çalışır.
   window.__okmRunAIAudit = window.__okmRunAIAudit || function(){return true};
@@ -1666,7 +1666,7 @@ function syncV32Mode(){const btn=document.querySelector(`.modeChip:nth-child(${o
 
 /* V40 — end-to-end UI/function chain self-test */
 (function(){
-  function deepChainAudit(){const rows=[];document.querySelectorAll('[onclick]').forEach((el)=>{const m=String(el.getAttribute('onclick')).match(/(?:window\.)?([A-Za-z_$][\w$]*)\s*\(/);if(m){const n=m[1];rows.push({type:'onclick',name:n,ok:typeof window[n]==='function'||typeof window['__'+n]==='function'||n==='show'||n==='toggleMoreMenu'})}});const missing=rows.filter(x=>!x.ok);const math=window.OKM_DEEP_SELFTEST?window.OKM_DEEP_SELFTEST():{ok:false,tests:[]};const result={version:'41.0',time:Date.now(),buttons:rows.length,missingHandlers:missing.slice(0,40),math,duplicateIds:(()=>{const c={};document.querySelectorAll('[id]').forEach(e=>c[e.id]=(c[e.id]||0)+1);return Object.entries(c).filter(([,n])=>n>1)})()};localStorage.okmV39SelfTest=JSON.stringify(result);return result}window.OKM_RUN_DEEP_SELFTEST=deepChainAudit;document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>deepChainAudit(),900));})();
+  function deepChainAudit(){const rows=[];document.querySelectorAll('[onclick]').forEach((el)=>{const m=String(el.getAttribute('onclick')).match(/(?:window\.)?([A-Za-z_$][\w$]*)\s*\(/);if(m){const n=m[1];rows.push({type:'onclick',name:n,ok:typeof window[n]==='function'||typeof window['__'+n]==='function'||n==='show'||n==='toggleMoreMenu'})}});const missing=rows.filter(x=>!x.ok);const math=window.OKM_DEEP_SELFTEST?window.OKM_DEEP_SELFTEST():{ok:false,tests:[]};const result={version:'41.0',time:Date.now(),buttons:rows.length,missingHandlers:missing.slice(0,40),math,duplicateIds:(()=>{const c={};document.querySelectorAll('[id]').forEach(e=>c[e.id]=(c[e.id]||0)+1);return Object.entries(c).filter(([,n])=>n>1)})()};localStorage.okmV39SelfTest=JSON.stringify(result);return result}window.OKM_RUN_DEEP_SELFTEST=deepChainAudit;document.addEventListener('DOMContentLoaded',()=>/* V52 SAFE BOOT: deep self-test açılışta çalıştırılmıyor. */);})();
 </script>
 <script>
 /* V41 — Mathematical Reasoning Lab + safe expression AST + verification pipeline
@@ -1857,7 +1857,7 @@ function syncV32Mode(){const btn=document.querySelector(`.modeChip:nth-child(${o
   window.OKM_RUN_V42_AUDIT=domAudit;
   on('ai:route',d=>{localStorage.setItem('okmV42LastRoute',JSON.stringify({at:Date.now(),...d}))});
   try{if(tx.hasUndo()){const b=document.getElementById('okmUndoButton');if(b)b.disabled=false}}catch{}
-  setTimeout(()=>{const r=domAudit();localStorage.setItem('okmV42Audit',JSON.stringify(r));window.__okmV42Audit=r},1300);
+  /* V52 SAFE BOOT: V42 audit açılışta çalıştırılmıyor. */
   emit('health:changed',{source:'v42-init'});
 })();
 </script>
@@ -2056,7 +2056,7 @@ function syncV32Mode(){const btn=document.querySelector(`.modeChip:nth-child(${o
   window.addEventListener('offline',()=>{apply({...localFallback(),ok:false}, {status:'offline_or_blocked'});});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>recover('resume'),700)});
   window.addEventListener('pageshow',()=>setTimeout(()=>recover('pageshow'),700));
-  setTimeout(()=>probe('startup'),1800);
+  /* V52 SAFE BOOT: network probe Android tarafındaki gecikmeli başlatmaya bırakıldı. */
   setInterval(()=>{if(document.visibilityState==='visible'){probe('watchdog').finally(()=>releaseGate())}},180000);
   setTimeout(()=>releaseGate(),6500);
 })();

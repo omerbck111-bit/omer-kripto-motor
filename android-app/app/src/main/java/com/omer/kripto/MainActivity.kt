@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
             scheduleSystemValidationWork()
             scheduleNetworkResilienceWork()
             probeNetworkSoon("startup_deferred")
-        }, 2500)
+        }, 8000)
     }
 
     private fun scheduleSystemValidationWork() {
