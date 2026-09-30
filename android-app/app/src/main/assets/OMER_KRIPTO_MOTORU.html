@@ -1256,7 +1256,7 @@ window.renderHealth=renderHealth;window.connectMarketSocket=connectWS;window.cro
     document.querySelectorAll('[onclick]').forEach(e=>{const a=e.getAttribute('onclick')||'';for(const n of (a.match(/\b([A-Za-z_$][\w$]*)\s*\(/g)||[]).map(x=>x.replace(/\s*\(.*/,''))){if(!defs.has(n)&&!['show','confirm','alert'].includes(n)&&!n.startsWith('__okm')&&!n.startsWith('window.Android'))unknownOnclick.push(n)}});
     const caps=capabilityState();const result={at:Date.now(),ok:missingPages.length===0&&duplicateIds.length===0&&unknownOnclick.length===0,missingPages,duplicateIds,unknownOnclick,caps,apiCount:(document.documentElement.innerHTML.match(/\/api\//g)||[]).length};localStorage.okmV38SelfTest=JSON.stringify(result);window.__okmV38SelfTest=result;return result;
   };
-  setTimeout(()=>window.__okmSystemSelfTest(),1500);
+  // Self-test yalnız manuel/sağlık akışında çalıştırılır; açılışı bloke etmez.
 </script>
 <script>
 (function singleFileManager(){
@@ -1535,8 +1535,10 @@ setInterval(()=>{if(document.visibilityState==='visible')runSmartMarket()},60000
   window.toggleWebPermission=window.toggleWebPermission||function(){};
   window.__okmRunAIAudit();
   window.refreshAIProviderStatus();
-  setTimeout(()=>{updateV32Home();syncV32Mode()},300);
-  setInterval(()=>{if(document.visibilityState==='visible'){window.__okmRunAIAudit();window.refreshAIProviderStatus&&window.refreshAIProviderStatus();}},10000);
+  setTimeout(()=>{updateV32Home();syncV32Mode()},800);
+  // AI denetimi açılışta inference çalıştırmaz; yalnızca kullanıcı AI/sağlık ekranına girdiğinde veya manuel kontrolde çalışır.
+  window.__okmRunAIAudit = window.__okmRunAIAudit || function(){return true};
+  setInterval(()=>{if(document.visibilityState==='visible'){window.refreshAIProviderStatus&&window.refreshAIProviderStatus();}},60000);
 })();
 
 function updateV32Home(){try{const rows=Object.entries(state.data||{});const ups=rows.filter(x=>(+x[1].change||0)>0).length;const total=rows.length;const reg=typeof marketRegime==='function'?marketRegime().name:'—';const top=rows.sort((a,b)=>Math.abs(+b[1].change||0)-Math.abs(+a[1].change||0)).slice(0,2).map(([s,x])=>`${s.replace('USDT','')} ${(+x.change>=0?'+':'')}${(+x.change||0).toFixed(1)}%`).join(' • ');if($('homeRegime'))$('homeRegime').textContent=reg.replace(' / ','/');if($('homeBreadth'))$('homeBreadth').textContent=total?`${ups}/${total}`:'—';if($('homeMarketLine'))$('homeMarketLine').textContent=top||'Canlı piyasa verileri hazırlanıyor…';const hs=$('homeAIState');if(hs)hs.textContent=total?`${total} coin`:'—';}catch(e){}}
@@ -1954,7 +1956,8 @@ function syncV32Mode(){const btn=document.querySelector(`.modeChip:nth-child(${o
   // AI is allowed to consume the lab, not silently mutate production state from it.
   window.OKM_SYSTEM_LAB_AI_CONTEXT=function(){const r=lastReport();return {labVersion:VERSION,status:window.OKM_SYSTEM_LAB.status(),report:r?{ok:r.ok,passed:r.passed,failed:r.failed,failures:r.failures}:null,policy:{readOnly:true,autoModify:false,rollbackRequiredForChanges:true}}};
   window.OKM_RUN_SYSTEM_LAB=runAll;
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>runAll({suites:['preflight','ai','math','state','core']}),2200));
+  // Ağır sistem laboratuvarını açılışta otomatik çalıştırma. Manuel/sağlık ekranından çağrılabilir.
+  window.__okmRunSystemLabManual=function(){return runAll({suites:['preflight','ai','math','state','core']})};
 })();
 </script>
 

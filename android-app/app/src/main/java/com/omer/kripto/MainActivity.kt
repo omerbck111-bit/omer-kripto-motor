@@ -125,11 +125,14 @@ class MainActivity : AppCompatActivity() {
 
         connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         connectivity.registerDefaultNetworkCallback(networkCallback)
-        pushNetworkState(currentNetworkValidated())
-        scheduleSilentHealthWork()
-        scheduleSystemValidationWork()
-        scheduleNetworkResilienceWork()
-        probeNetworkSoon("startup")
+        // Ağ/sağlık işleri ilk ekranı bloke etmesin; WebView tamamen açıldıktan sonra arka planda başlat.
+        webView.postDelayed({
+            pushNetworkState(currentNetworkValidated())
+            scheduleSilentHealthWork()
+            scheduleSystemValidationWork()
+            scheduleNetworkResilienceWork()
+            probeNetworkSoon("startup_deferred")
+        }, 2500)
     }
 
     private fun scheduleSystemValidationWork() {
@@ -149,9 +152,10 @@ class MainActivity : AppCompatActivity() {
         val now = System.currentTimeMillis()
         if (now - lastResumeRefresh > 15000) {
             lastResumeRefresh = now
+            // Resume sırasında ağır kalite laboratuvarı çalıştırma; kullanıcı sekmeye dönünce UI anında hazır kalsın.
             webView.postDelayed({
                 webView.evaluateJavascript(
-                    "window.__okmRefreshSoon && window.__okmRefreshSoon('resume'); window.OKM_RUN_QUALITY_LAB && window.OKM_RUN_QUALITY_LAB();", null
+                    "window.__okmRefreshSoon && window.__okmRefreshSoon('resume');", null
                 )
             }, 250)
         }
