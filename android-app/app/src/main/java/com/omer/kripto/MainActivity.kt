@@ -253,6 +253,7 @@ class MainActivity : AppCompatActivity() {
         runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
         runCatching { webView.removeJavascriptInterface("AndroidNetwork") }
         runCatching { webView.removeJavascriptInterface("AndroidLocalAI") }
+        runCatching { localAi.close() }
         runCatching { webView.stopLoading() }
         webView.destroy()
         super.onDestroy()
@@ -432,6 +433,25 @@ class MainActivity : AppCompatActivity() {
         fun probeNow(): String {
             Thread { probeNetworkSoon("js") }.start()
             return "STARTED"
+        }
+
+        @JavascriptInterface
+        fun httpGetAsync(url: String, timeoutMs: Int, requestId: String): String {
+            val id = requestId.take(100)
+            lifecycleScope.launch(Dispatchers.IO) {
+                val result = runCatching { httpGet(url, timeoutMs) }
+                    .getOrElse { JSONObject().put("ok", false).put("status", 0).put("body", "").put("error", it.message ?: "network_error").toString() }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        val jsId = JSONObject.quote(id)
+                        val jsResult = JSONObject.quote(result)
+                        webView.evaluateJavascript(
+                            "window.__androidHttpResult && window.__androidHttpResult($jsId,$jsResult);", null
+                        )
+                    }
+                }
+            }
+            return "STARTED:$id"
         }
 
         @JavascriptInterface
