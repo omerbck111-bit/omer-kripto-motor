@@ -2136,10 +2136,9 @@ function syncV32Mode(){const btn=document.querySelector(`.modeChip:nth-child(${o
   }
   function install(){
     if(window.__okmV44Installed)return;window.__okmV44Installed=true;
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>guardedRun('resume'),1200)});
-    window.addEventListener('online',()=>setTimeout(()=>guardedRun('online'),1500));
-    setInterval(()=>{if(document.visibilityState==='visible')guardedRun('watchdog')},WATCHDOG);
-    setTimeout(()=>guardedRun('startup'),2500);
+    // V51: kalite laboratuvarı kullanıcı arayüzünü kilitlememeli.
+    // Otomatik startup/resume/online/watchdog tetikleyicileri kapalı.
+    // Laboratuvar gerektiğinde OKM_RUN_QUALITY_LAB() ile manuel çalıştırılabilir.
   }
   window.OKM_QUALITY_LAB={version:VERSION,run:()=>guardedRun('manual'),last:()=>{try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}},history:()=>{try{return JSON.parse(localStorage.getItem(HIST)||'[]')}catch{return []}},fingerprint,propertyTests:{mathProperties,stateProperties,languageProperties,routingProperties}};
   window.OKM_RUN_QUALITY_LAB=()=>guardedRun('manual');
