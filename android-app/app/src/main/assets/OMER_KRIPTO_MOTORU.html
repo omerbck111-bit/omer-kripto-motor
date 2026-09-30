@@ -290,7 +290,7 @@ function toggleMoreMenu(){
   const m=document.getElementById('moreMenu');if(!m)return;
   m.classList.toggle('show');
   const c=document.getElementById('moreChevron');if(c)c.textContent=m.classList.contains('show')?'⌄':'⌃';
-}function show(id,b){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const target=$(id)||$(id==='opportunities'?'dashboard':id);if(target)target.classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(!b)b=document.querySelector(`nav button[data-id="${id}"]`);if(b)b.classList.add('active');try{history.replaceState(null,'','#'+id)}catch(e){}if(id==='opportunities'){renderOpportunityPage();}if(id==='predictions')renderPred();if(id==='bots'){renderGridMemory();setTimeout(()=>buildBots(true),60)}if(id==='spot'){renderSpotMemory();setTimeout(()=>buildSpot(true),60)}if(id==='history')renderHistory();if(id==='health'){renderHealth();renderGatewayTroubleshoot();showAutonomousStatus()}if(id==='assistant'){if(typeof applyAssistantFocus==='function')applyAssistantFocus();if(typeof renderChat==='function')renderChat()}
+}function show(id,b){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const target=$(id)||$(id==='opportunities'?'dashboard':id);if(target)target.classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(!b)b=document.querySelector(`nav button[data-id="${id}"]`);if(b)b.classList.add('active');try{history.replaceState(null,'','#'+id)}catch(e){}if(id==='opportunities'){renderOpportunityPage();}if(id==='predictions')renderPred();if(id==='bots'){renderGridMemory();setTimeout(()=>buildBots(true),60)}if(id==='spot'){renderSpotMemory();setTimeout(()=>buildSpot(true),60)}if(id==='history')renderHistory();if(id==='health'){renderHealth();renderGatewayTroubleshoot();showAutonomousStatus()}if(id==='assistant'){requestAnimationFrame(()=>{try{if(typeof applyAssistantFocus==='function')applyAssistantFocus();if(typeof renderChat==='function')renderChat();}catch(e){hlog('WARN','AI-UI',String(e.message||e));}setTimeout(()=>{try{startAIStatusPollingSafe()}catch(e){}},120);});}
   if(id==='dashboard'&&b&&b.textContent.includes('Fırsatlar'))setTimeout(()=>document.getElementById('opps')?.scrollIntoView({behavior:'smooth',block:'start'}),80)
   if(id!=='more')document.getElementById('moreMenu')?.classList.remove('show');
 }const BINANCE_HOSTS=['https://api.binance.com','https://api1.binance.com','https://api2.binance.com','https://api3.binance.com'];
@@ -1242,10 +1242,20 @@ window.renderHealth=renderHealth;window.connectMarketSocket=connectWS;window.cro
   // AI durumu artık yalnızca sekmeye girince değil, açılışta ve periyodik
   // olarak da kontrol edilir; böylece yardımcı servis geç başlasa bile
   // ekran sonsuza kadar "hazırlanıyor" yazısında takılı kalmaz.
-  refreshAIProviderStatus();
-  setupStatus();
-  setInterval(refreshAIProviderStatus,20000);
-  setInterval(setupStatus,20000);
+  // V54: AI model/runtime kontrolleri artık açılışta sürekli çalışmaz.
+  // Yalnızca Ömer AI/Ayarlar ekranı görünürken kontrollü aralıklarla çalışır.
+  let __okmAIStatusTimer=null;
+  window.startAIStatusPollingSafe=function(){
+    if(__okmAIStatusTimer)clearInterval(__okmAIStatusTimer);
+    try{refreshAIProviderStatus();setupStatus();}catch(e){}
+    __okmAIStatusTimer=setInterval(()=>{
+      const a=document.getElementById('assistant');
+      const st=document.getElementById('settings');
+      const visible=(a&&!a.classList.contains('hidden'))||(st&&!st.classList.contains('hidden'));
+      if(!visible){clearInterval(__okmAIStatusTimer);__okmAIStatusTimer=null;return;}
+      try{setupStatus();}catch(e){}
+    },5000);
+  };
   renderGatewayTroubleshoot();
   checkFileProtocol();
   routeFromHash();window.addEventListener('hashchange',routeFromHash);
@@ -1548,7 +1558,7 @@ setInterval(()=>{if(document.visibilityState==='visible')runSmartMarket()},60000
   function toggleModelDownloadPanel(){document.getElementById('modelDownloadPanel')?.classList.toggle('show');startModelStatusPolling();}
   function fmtBytes(v){v=Number(v)||0;if(v>=1073741824)return (v/1073741824).toFixed(2)+' GB';if(v>=1048576)return (v/1048576).toFixed(1)+' MB';return Math.round(v/1024)+' KB'}
   function renderModelDownloadStatus(s){const dot=document.getElementById('modelStatusDot'),txt=document.getElementById('modelStatusText'),fill=document.getElementById('modelProgressFill'),pct=document.getElementById('modelProgressPct'),meta=document.getElementById('modelProgressMeta');if(!s)return;const state=s.state||'idle',p=Number(s.percent)||0;if(fill)fill.style.width=p+'%';if(pct)pct.textContent=p+'%';if(dot)dot.className='modelStatusDot '+(state==='complete'?'ok':(state==='running'||state==='pending'||state==='paused'||state==='checking'?'busy':'bad'));if(txt)txt.textContent=state==='complete'?'Yerel AI modeli hazır • doğrulandı':state==='running'?`Model indiriliyor • %${p}`:state==='checking'?'İndirme tamamlandı • doğrulanıyor':state==='paused'?'İndirme duraklatıldı':state==='failed'?'Model indirme başarısız':'Yerel AI modeli hazır değil';if(meta)meta.textContent=state==='complete'?`${fmtBytes(s.bytes)} • cihazda doğrulanmış`:state==='failed'?`İndirme hatası • neden ${s.reason??'—'}`:`${fmtBytes(s.bytes)} / ${fmtBytes(s.total)} • ${state}`;}
-  function startModelStatusPolling(){if(okmModelPoll)clearInterval(okmModelPoll);const tick=()=>{try{const s=JSON.parse(window.AndroidLocalAI?.downloadStatus?.()||'{}');renderModelDownloadStatus(s);if(s.state==='complete'||s.state==='idle'||s.state==='failed'){if(okmModelPoll){clearInterval(okmModelPoll);okmModelPoll=null;}refreshAIProviderStatus?.();}}catch(e){}};tick();okmModelPoll=setInterval(tick,1000);}
+  function startModelStatusPolling(){if(okmModelPoll)clearInterval(okmModelPoll);const tick=()=>{try{const s=JSON.parse(window.AndroidLocalAI?.downloadStatus?.()||'{}');renderModelDownloadStatus(s);if(s.state==='complete'||s.state==='idle'||s.state==='failed'){if(okmModelPoll){clearInterval(okmModelPoll);okmModelPoll=null;}refreshAIProviderStatus?.();}}catch(e){}};tick();okmModelPoll=setInterval(tick,5000);}
   window.downloadLocalModel=function(){const m=document.getElementById('setupMessage'),panel=document.getElementById('modelDownloadPanel');panel?.classList.add('show');try{const r=window.AndroidLocalAI?.downloadRecommendedModel?.()||'';if(String(r).startsWith('READY:')){if(m)m.textContent='✓ Model zaten cihazda ve doğrulanmış.';}else if(String(r).startsWith('EXISTING:')||String(r).startsWith('STARTED:')){if(m)m.textContent='Model indiriliyor. İlerleme aşağıda ve Android bildiriminde görünür.';}else if(m)m.textContent=r;startModelStatusPolling();}catch(e){if(m)m.textContent='✕ Model indirme başlatılamadı: '+e.message}};
   window.testLocalAI=async function(){
     const s=localStatus(),m=document.getElementById('setupMessage');

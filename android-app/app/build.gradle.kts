@@ -13,8 +13,8 @@ android {
         applicationId = "com.omer.kripto"
         minSdk = 24
         targetSdk = 35
-        versionCode = 53
-        versionName = "53.0.0"
+        versionCode = 54
+        versionName = "54.0.0"
     }
 }
 
