@@ -290,7 +290,7 @@ function toggleMoreMenu(){
   const m=document.getElementById('moreMenu');if(!m)return;
   m.classList.toggle('show');
   const c=document.getElementById('moreChevron');if(c)c.textContent=m.classList.contains('show')?'⌄':'⌃';
-}function show(id,b){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const target=$(id)||$(id==='opportunities'?'dashboard':id);if(target)target.classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(!b)b=document.querySelector(`nav button[data-id="${id}"]`);if(b)b.classList.add('active');try{history.replaceState(null,'','#'+id)}catch(e){}if(id==='opportunities'){renderOpportunityPage();}if(id==='predictions')renderPred();if(id==='bots'){buildBots(true);renderGridMemory()}if(id==='spot'){buildSpot(true);renderSpotMemory()}if(id==='history')renderHistory();if(id==='health'){renderHealth();renderGatewayTroubleshoot();showAutonomousStatus()}if(id==='assistant'){if(typeof applyAssistantFocus==='function')applyAssistantFocus();if(typeof renderChat==='function')renderChat()}
+}function show(id,b){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const target=$(id)||$(id==='opportunities'?'dashboard':id);if(target)target.classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(!b)b=document.querySelector(`nav button[data-id="${id}"]`);if(b)b.classList.add('active');try{history.replaceState(null,'','#'+id)}catch(e){}if(id==='opportunities'){renderOpportunityPage();}if(id==='predictions')renderPred();if(id==='bots'){renderGridMemory();setTimeout(()=>buildBots(true),60)}if(id==='spot'){renderSpotMemory();setTimeout(()=>buildSpot(true),60)}if(id==='history')renderHistory();if(id==='health'){renderHealth();renderGatewayTroubleshoot();showAutonomousStatus()}if(id==='assistant'){if(typeof applyAssistantFocus==='function')applyAssistantFocus();if(typeof renderChat==='function')renderChat()}
   if(id==='dashboard'&&b&&b.textContent.includes('Fırsatlar'))setTimeout(()=>document.getElementById('opps')?.scrollIntoView({behavior:'smooth',block:'start'}),80)
   if(id!=='more')document.getElementById('moreMenu')?.classList.remove('show');
 }const BINANCE_HOSTS=['https://api.binance.com','https://api1.binance.com','https://api2.binance.com','https://api3.binance.com'];
@@ -302,29 +302,32 @@ function makeNativeResponse(raw,url){
   const body=String(j?.body||'');
   return {ok:!!j?.ok,status:Number(j?.status||0),url,headers:{},json:async()=>JSON.parse(body),text:async()=>body,nativeError:j?.error||''};
 }
+const __nativeHttpWaiters=new Map();
+let __nativeHttpSeq=0;
+window.__androidNetworkResult=function(id,raw){
+  const key=String(id), w=__nativeHttpWaiters.get(key);
+  if(!w)return;
+  __nativeHttpWaiters.delete(key);
+  clearTimeout(w.timer);
+  try{w.resolve({r:makeNativeResponse(raw,w.url),latency:Math.round(performance.now()-w.started),native:true});}
+  catch(e){w.resolve({r:makeNativeResponse(JSON.stringify({ok:false,status:0,body:'',error:String(e?.message||e)}),w.url),latency:Math.round(performance.now()-w.started),native:true});}
+};
 async function fetchWithTimeout(url,timeout=BINANCE_TIMEOUT_MS){
   const started=performance.now();
-  // Android APK: market data never depends on WebView fetch/CORS. Use the same
-  // native network path that the resilience engine already verifies.
+  // V53: Android network I/O is asynchronous so taps/scroll/navigation never wait on HTTP.
   if(typeof AndroidNetwork!=='undefined' && AndroidNetwork?.httpGetAsync){
-    return await new Promise((resolve,reject)=>{
-      const id='net_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-      const wait=window.__OKM_NET_WAIT||(window.__OKM_NET_WAIT={});
-      const timer=setTimeout(()=>{delete wait[id];reject(new Error('Native network timeout'));},Math.min(timeout,9000));
-      wait[id]={
-        resolve:(raw)=>{
-          clearTimeout(timer); delete wait[id];
-          resolve({r:makeNativeResponse(raw,url),latency:Math.round(performance.now()-started),native:true});
-        },
-        reject:(e)=>{clearTimeout(timer); delete wait[id]; reject(e)}
-      };
-      try{
-        const startedNative=AndroidNetwork.httpGetAsync(String(url),Math.min(timeout,8000),id);
-        if(!String(startedNative).startsWith('STARTED:')){
-          clearTimeout(timer); delete wait[id];
-          reject(new Error(String(startedNative||'Native network start failed')));
-        }
-      }catch(e){clearTimeout(timer); delete wait[id]; reject(e)}
+    const id='n'+Date.now().toString(36)+'_'+(++__nativeHttpSeq);
+    return await new Promise(resolve=>{
+      const timer=setTimeout(()=>{
+        if(!__nativeHttpWaiters.has(id))return;
+        __nativeHttpWaiters.delete(id);
+        resolve({r:makeNativeResponse(JSON.stringify({ok:false,status:0,body:'',error:'NATIVE_HTTP_TIMEOUT'}),url),latency:Math.round(performance.now()-started),native:true});
+      },Math.min(Math.max(timeout,2500),10000));
+      __nativeHttpWaiters.set(id,{resolve,timer,url,started});
+      try{AndroidNetwork.httpGetAsync(String(url),Math.min(timeout,8000),id)}catch(e){
+        clearTimeout(timer);__nativeHttpWaiters.delete(id);
+        resolve({r:makeNativeResponse(JSON.stringify({ok:false,status:0,body:'',error:String(e?.message||e)}),url),latency:Math.round(performance.now()-started),native:true});
+      }
     });
   }
   const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),timeout);
@@ -409,7 +412,7 @@ async function fetchMarket(){try{
   base.forEach(x=>{const ch=+x.priceChangePercent,range=((+x.highPrice-(+x.lowPrice))/(+x.lastPrice))*100,volume=+x.quoteVolume;state.data[x.symbol]={price:+x.lastPrice,change:ch,score:50,range,volume,technical:null}});
   const deep=base.slice().sort((a,b)=>Math.abs(+b.priceChangePercent)+Math.log10(Math.max(1,+b.quoteVolume))*.2-(Math.abs(+a.priceChangePercent)+Math.log10(Math.max(1,+a.quoteVolume))*.2)).slice(0,(location.hostname==='appassets.androidplatform.net')?8:24);
   for(let i=0;i<deep.length;i+=4){await Promise.all(deep.slice(i,i+4).map(async x=>{let t=technicalCache[x.symbol]?.value;if(!t||Date.now()-technicalCache[x.symbol].at>5*60*1000){t=await technicalPack(x.symbol);if(t)technicalCache[x.symbol]={at:Date.now(),value:t};}const d=state.data[x.symbol];if(!d||!t)return;const trendScore=50+t.trend*22+(t.multi*15);const rsiScore=100-Math.min(100,Math.abs(t.rsi-55)*2);const momentumScore=Math.min(100,50+t.mom5*8+t.mom15*5+t.mom1*2);const volScore=Math.min(100,Math.max(0,50+(t.volRatio-1)*30));const liquidityScore=Math.min(100,Math.log10(Math.max(1,d.volume))*8);d.technical=t;d.score=Math.max(0,Math.min(100,trendScore*.35+momentumScore*.25+rsiScore*.15+volScore*.10+liquidityScore*.15));}));}
-  $('conn').textContent=`● Canlı + tüm USDT evreni taranıyor (${base.length} coin)`;$('conn').className='status';renderMarket();renderSummary();checkPredictions();checkGridMemory();buildBots(false);let last=Number(localStorage.okmLastAutoPred||0);if(Date.now()-last>=3600000){makePredictions(true);localStorage.okmLastAutoPred=String(Date.now())}
+  $('conn').textContent=`● Canlı + tüm USDT evreni taranıyor (${base.length} coin)`;$('conn').className='status';renderMarket();renderSummary();checkPredictions();checkGridMemory();if(!$('bots').classList.contains('hidden'))setTimeout(()=>buildBots(false),0);let last=Number(localStorage.okmLastAutoPred||0);if(Date.now()-last>=3600000){makePredictions(true);localStorage.okmLastAutoPred=String(Date.now())}
   // DÜZELTME: Son başarılı piyasa anlık görüntüsü yerel depoya yazılır.
   // Böylece sayfa yenilendiğinde veya kısa bir internet kopukluğunda ekran
   // "boş" kalmaz; en son bilinen fiyatlar "X dakika önce" etiketiyle hemen gösterilir.

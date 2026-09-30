@@ -454,8 +454,7 @@ class MainActivity : AppCompatActivity() {
             return "STARTED:$id"
         }
 
-        @JavascriptInterface
-        fun httpGet(url: String, timeoutMs: Int): String {
+        private fun httpGetBlocking(url: String, timeoutMs: Int): String {
             return runCatching {
                 val u = URL(url)
                 val host = u.host.lowercase()
@@ -467,7 +466,7 @@ class MainActivity : AppCompatActivity() {
                     readTimeout = timeoutMs.coerceIn(2000, 9000)
                     useCaches = false
                     setRequestProperty("Cache-Control", "no-cache")
-                    setRequestProperty("User-Agent", "OmerKriptoAndroid/47")
+                    setRequestProperty("User-Agent", "OmerKriptoAndroid/53")
                 }
                 val code = c.responseCode
                 val stream = if (code in 200..399) c.inputStream else c.errorStream
@@ -475,6 +474,26 @@ class MainActivity : AppCompatActivity() {
                 c.disconnect()
                 JSONObject().apply { put("ok", code in 200..299); put("status", code); put("body", body) }.toString()
             }.getOrElse { JSONObject().apply { put("ok", false); put("status", 0); put("body", ""); put("error", it.message ?: "network_error") }.toString() }
+        }
+
+        // V53: Never block the WebView JS thread on network I/O.
+        // JavascriptInterface methods are synchronous from JS's point of view, so the
+        // actual HTTP work is moved to a worker thread and the result is posted back.
+        @JavascriptInterface
+        fun httpGetAsync(url: String, timeoutMs: Int, requestId: String): String {
+            val id = requestId.take(120)
+            Thread {
+                val result = httpGetBlocking(url, timeoutMs)
+                val jsId = JSONObject.quote(id)
+                val jsResult = JSONObject.quote(result)
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "window.__androidNetworkResult && window.__androidNetworkResult($jsId,$jsResult);",
+                        null
+                    )
+                }
+            }.start()
+            return "STARTED:$id"
         }
 
         @JavascriptInterface
